@@ -1,20 +1,67 @@
-import urllib2, urllib, json, subprocess,sys, time
-url = "https://api.forecast.io/forecast/%s?units=si&exclude=minutely,hourly,daily,alerts,flags" % sys.argv[1]
-while True:
-	result = urllib2.urlopen(url).read()
-	data = json.loads(result)
-	subprocess.call("""curl -sS -i -XPOST 'http://influxdb:8086/write?db=tomdee' --data-binary 'temperature,type=forecast,location=vicksburg value=%s
-humidity,type=forecast,location=vicksburg value=%s
-visibility,type=forecast,location=vicksburg value=%s
-apparentTemperature,type=forecast,location=vicksburg value=%s
-pressure,type=forecast,location=vicksburg value=%s
-windSpeed,type=forecast,location=vicksburg value=%s
-cloudCover,type=forecast,location=vicksburg value=%s
-windBearing,type=forecast,location=vicksburg value=%s
-ozone,type=forecast,location=vicksburg value=%s
-precipIntensity,type=forecast,location=vicksburg value=%s'""" %
-	(data['currently']['temperature'],data['currently']['humidity']*100,data['currently']['visibility'],data['currently']['apparentTemperature'],data['currently']['pressure'],data['currently']['windSpeed'],data['currently']['cloudCover'],data['currently']['windBearing'],data['currently']['ozone'],data['currently']['precipIntensity']),
-	shell=True)
-	time.sleep(600)
+#! /usr/bin/env python
 
+from influxdb import InfluxDBClient
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib
+import urllib2
+
+def isfloat(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+def record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, period):
+    url = "https://api.forecast.io/forecast/%s/%s?units=si&exclude=minutely,hourly,daily,alerts,flags" % (api_key, ",".join([latitude, longitude]))
+    client = InfluxDBClient(db_addr, db_port, 'root', 'root', db_name)
+
+    while True:
+        result = urllib2.urlopen(url).read()
+        data = json.loads(result)
+
+        database_dicts = client.get_list_database()
+        for db in database_dicts:
+            if(db['name'] == db_name):
+                break
+        else:
+            client.create_database(db_name)
+
+        json_body = [{
+            "measurement" : key,
+            "fields": {
+                "value": float(value)
+            }} for key, value in data['currently'].items() if isfloat(value)]
+
+        print "Sending to InfluxDB: \n" + str(json_body)
+        print "Result: "
+        print client.write_points(json_body)
+
+        print "Complete"
+        print ""
+
+        time.sleep(period)
+
+
+def main():
+    # Required
+    api_key = os.environ.get("API_KEY")
+    latitude = os.environ.get("LATITUDE")
+    longitude = os.environ.get("LONGITUDE")
+
+    # Optional
+    db_addr = os.getenv("INFLUXDB_ADDRESS", 'influxdb')
+    db_port = os.getenv("INFLUXDB_PORT", 8086)
+    db_name = os.getenv("INFLUXDB_NAME", 'weather')
+    period = int(os.getenv("PERIOD", 120))
+
+    record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, period)
+
+
+if __name__ == "__main__":
+    main()
 
