@@ -21,8 +21,12 @@ def record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, peri
     client = InfluxDBClient(db_addr, db_port, 'root', 'root', db_name)
 
     while True:
-        result = urllib2.urlopen(url).read()
-        data = json.loads(result)
+        try:
+            result = urllib2.urlopen(url).read()
+            data = json.loads(result)
+        except Exception as ex:
+            print "Tried url: " + url
+            raise ex
 
         database_dicts = client.get_list_database()
         for db in database_dicts:
@@ -59,6 +63,7 @@ def main():
     db_name = os.getenv("INFLUXDB_NAME", 'weather')
     period = int(os.getenv("PERIOD", 120))
 
+    print "Entering main loop..."
     record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, period)
 
 
