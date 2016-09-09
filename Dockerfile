@@ -16,5 +16,5 @@ WORKDIR /app
 ONBUILD COPY . /app
 ONBUILD RUN virtualenv /env && /env/bin/pip install -r /app/requirements.txt
 
-CMD ["python" "/app/forecast.py"]
+CMD ["python", "/app/forecast.py"]
 
