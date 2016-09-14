@@ -1,6 +1,8 @@
 FROM gliderlabs/alpine:latest
 
 RUN apk add --update \
+    ca-certificates \
+    openssl \
     python \
     python-dev \
     py-pip \
@@ -8,13 +10,11 @@ RUN apk add --update \
   && pip install virtualenv \
   && rm -rf /var/cache/apk/*
 
-ADD forecast.py forecast.py
-RUN chmod +x forecast.py
-
 WORKDIR /app
 
-ONBUILD COPY . /app
-ONBUILD RUN virtualenv /env && /env/bin/pip install -r /app/requirements.txt
+COPY requirements.txt /app
+RUN virtualenv /env && /env/bin/pip install -r /app/requirements.txt
+COPY . /app
 
-CMD ["python", "/app/forecast.py"]
+CMD ["/env/bin/python", "forecast.py"]
 
