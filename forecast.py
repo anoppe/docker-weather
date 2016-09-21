@@ -31,8 +31,8 @@ def isfloat(value):
 def record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, period, units, location, tags):
     killer = GracefulKiller()
 
-    # Bulid URL for Forecast.io request
-    url = "https://api.forecast.io/forecast/{api_key}/{latitude},{longitude}" \
+    # Bulid URL for darksky.net request
+    url = "https://api.darksky.net/forecast/{api_key}/{latitude},{longitude}" \
             "?units={units}&exclude=minutely,hourly,daily,alerts,flags"
     url = url.format(api_key=api_key,
                      units=units,
