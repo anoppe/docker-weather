@@ -4,12 +4,12 @@ from __future__ import print_function
 from influxdb import InfluxDBClient
 import json
 import os
+import pprint
+import requests
 import signal
 import subprocess
 import sys
 import time
-import urllib
-import urllib2
 
 class GracefulKiller:
     kill_now = False
@@ -50,12 +50,8 @@ def record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, peri
     print("Done.")
 
     while not killer.kill_now:
-        try:
-            result = urllib2.urlopen(url).read()
-            data = json.loads(result)
-        except Exception as ex:
-            print("Tried url: " + url)
-            raise ex
+        result = requests.get(url)
+        data = result.json()
 
         database_dicts = client.get_list_database()
         for db in database_dicts:
@@ -71,7 +67,8 @@ def record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, peri
                 "value": float(value)
             }} for key, value in data['currently'].items() if isfloat(value)]
 
-        print("Sending to InfluxDB: \n" + str(json_body))
+        print("Sending to InfluxDB:")
+        pprint.pprint(json_body)
         print("Write success: ", end="")
         print(client.write_points(json_body))
         print("Measurement complete")
@@ -108,7 +105,6 @@ def main():
 
     print("Entering main loop...")
     record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, period, units, location, tags)
-
 
 if __name__ == "__main__":
     main()
