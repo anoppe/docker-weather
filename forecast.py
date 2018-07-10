@@ -50,36 +50,41 @@ def record_weather(api_key, latitude, longitude, db_addr, db_port, db_name, peri
     print("Done.")
 
     while not killer.kill_now:
-        result = requests.get(url)
-        data = result.json()
-
-        database_dicts = client.get_list_database()
-        for db in database_dicts:
-            if(db['name'] == db_name):
-                break
-        else:
-            client.create_database(db_name)
-
-        json_body = [{
-            "measurement" : key,
-            "tags" : tags_set,
-            "fields": {
-                "value": float(value)
-            }} for key, value in data['currently'].items() if isfloat(value)]
-
-        print("Sending to InfluxDB:")
-        pprint.pprint(json_body)
-        print("Write success: ", end="")
-        print(client.write_points(json_body))
-        print("Measurement complete")
-        print("Sleeping for %d seconds..." % period)
-        print()
-        sys.stdout.flush()
+        try:
+            request_weather(client, db_name, period, tags_set, url)
+        except:
+            print("An error occurred requesting weather data")
 
         # Sleep in short bursts, so that we may exit gracefully
         sleep_start = time.time()
         while time.time() - sleep_start < period and not killer.kill_now:
             time.sleep(1)
+
+
+def request_weather(client, db_name, period, tags_set, url):
+    result = requests.get(url)
+    data = result.json()
+    database_dicts = client.get_list_database()
+    for db in database_dicts:
+        if (db['name'] == db_name):
+            break
+    else:
+        client.create_database(db_name)
+    json_body = [{
+        "measurement": key,
+        "tags": tags_set,
+        "fields": {
+            "value": float(value)
+        }} for key, value in data['currently'].items() if isfloat(value)]
+    print("Sending to InfluxDB:")
+    pprint.pprint(json_body)
+    print("Write success: ", end="")
+    print(client.write_points(json_body))
+    print("Measurement complete")
+    print("Sleeping for %d seconds..." % period)
+    print()
+    sys.stdout.flush()
+
 
 def get_required_env(name):
     variable = os.environ.get(name)
